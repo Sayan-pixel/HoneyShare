@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: honeyshare-backend-test
+
+  datasource:
+    url: jdbc:h2:mem:honeyshare_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+server:
+  port: 0
+
+honeyshare:
+  storage:
+    provider: minio
+    endpoint: http://localhost:9000
+    region: us-east-1
+    bucket: test-bucket
+    access-key: minioadmin
+    secret-key: minioadmin
+  features:
+    e2e-enabled: false
+
