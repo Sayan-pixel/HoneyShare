@@ -1,0 +1,49 @@
+# Local development compose file.
+# Do NOT use these credentials in production.
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: honeyshare-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootchangeme
+      MYSQL_DATABASE: honeyshare
+      MYSQL_USER: honeyshare
+      MYSQL_PASSWORD: changeme
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-time-zone='+00:00'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "honeyshare", "-pchangeme"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  storage:
+    image: rustfs/rustfs:latest
+    container_name: honeyshare-storage
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
+      RUSTFS_VOLUMES: /data
+    ports:
+      - "9000:9000"    # S3 API
+      - "9001:9001"    # Web Console
+    volumes:
+      - storage_data:/data
+
+volumes:
+  mysql_data:
+  storage_data:
