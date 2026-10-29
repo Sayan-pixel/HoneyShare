@@ -1,5 +1,10 @@
 # HoneyShare
 
+[![HoneyShare CI](https://github.com/Sayan-pixel/HoneyShare/actions/workflows/ci.yml/badge.svg)](https://github.com/Sayan-pixel/HoneyShare/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-v0.1.0--beta-blue.svg)](https://github.com/Sayan-pixel/HoneyShare/releases/tag/v0.1.0-beta)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://adoptium.net/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
+
 Reliable, cross-platform, server-backed file-sharing and delivery system.
 
 Designed for dependable file delivery even when the recipient is offline or the sender temporarily loses connectivity.

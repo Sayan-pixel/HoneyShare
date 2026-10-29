@@ -1,0 +1,33 @@
+name: HoneyShare CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test (Java 17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compile and Run Tests
+        run: mvn clean test -f backend/pom.xml --batch-mode
+
+      - name: Package Executable Jar
+        run: mvn package -DskipTests -f backend/pom.xml --batch-mode
+
