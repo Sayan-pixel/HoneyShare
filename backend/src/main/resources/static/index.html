@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HoneyShare — Reliable Server-Backed File Sharing</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍯</text></svg>">
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">🍯</span>
+        <span class="brand-name">HoneyShare</span>
+        <span class="brand-tag">v0.1-beta</span>
+      </div>
+      <nav id="mainNav" class="nav-links hidden">
+        <button class="nav-btn active" data-view="sendView">Send File</button>
+        <button class="nav-btn" data-view="inboxView">Inbox <span id="inboxBadge" class="badge hidden">0</span></button>
+        <button class="nav-btn" data-view="historyView">Sent Files</button>
+        <button class="nav-btn" data-view="notificationsView">Notifications <span id="notifyBadge" class="badge notify-badge hidden">0</span></button>
+        <button class="nav-btn" data-view="settingsView">Settings & Quota</button>
+        <button id="logoutBtn" class="nav-btn btn-outline">Sign Out</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Global Alert Banner -->
+  <div id="alertBanner" class="alert-banner hidden"></div>
+
+  <main class="app-main">
+    <!-- View 1: Auth (Login & Register) -->
+    <section id="authView" class="view-panel">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button id="tabLogin" class="tab-btn active">Sign In</button>
+          <button id="tabRegister" class="tab-btn">Register with Invite</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form">
+          <h2>Sign in to HoneyShare</h2>
+          <p class="subtitle">Access your inbox and resilient resumable transfers.</p>
+
+          <div class="form-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" required placeholder="name@example.com" autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••••••" autocomplete="current-password">
+          </div>
+
+          <div id="mfaGroup" class="form-group hidden">
+            <label for="loginMfaCode">Two-Factor Authentication Code</label>
+            <input type="text" id="loginMfaCode" placeholder="6-digit code or recovery code" autocomplete="one-time-code">
+            <small class="hint">Enter the 6-digit code from your authenticator app or backup code.</small>
+          </div>
+
+          <button type="submit" id="loginSubmitBtn" class="btn btn-primary full-width">Sign In</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form hidden">
+          <h2>Create Your Account</h2>
+          <p class="subtitle">HoneyShare is currently invitation-only for beta safety.</p>
+
+          <div class="form-group">
+            <label for="regToken">Invitation Token</label>
+            <input type="text" id="regToken" required placeholder="Paste invitation token here">
+          </div>
+
+          <div class="form-group">
+            <label for="regEmail">Email Address</label>
+            <input type="email" id="regEmail" required placeholder="name@example.com" autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input type="password" id="regPassword" required minlength="12" placeholder="Minimum 12 characters" autocomplete="new-password">
+            <small class="hint">Must be at least 12 characters (Argon2id hashing).</small>
+          </div>
+
+          <div class="form-group">
+            <label for="regPasswordConfirm">Confirm Password</label>
+            <input type="password" id="regPasswordConfirm" required minlength="12" placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+
+          <button type="submit" id="registerSubmitBtn" class="btn btn-primary full-width">Register Account</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- View 2: Send File (Upload & Resumable Transfer) -->
+    <section id="sendView" class="view-panel hidden">
+      <div class="panel-card">
+        <div class="card-header">
+          <h2>Send Resilient File Transfer</h2>
+          <p class="subtitle">Files are stored securely with 24-hour retention. Delivery succeeds even if recipient is offline.</p>
+        </div>
+
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" class="file-input">
+          <div class="drop-prompt">
+            <div class="upload-icon">📁</div>
+            <p><strong>Drag & drop file here</strong>, or <span class="browse-link">browse</span></p>
+            <p class="file-limits">Supports up to 100 GB per transfer • 200 GB user quota</p>
+          </div>
+          <div id="selectedFileInfo" class="selected-file-info hidden">
+            <div class="file-meta">
+              <span class="file-name" id="fileName">file.bin</span>
+              <span class="file-size" id="fileSize">0 B</span>
+            </div>
+            <button type="button" id="clearFileBtn" class="btn-text">Remove</button>
+          </div>
+        </div>
+
+        <form id="transferForm" class="transfer-form">
+          <div class="form-group">
+            <label for="recipientsInput">Recipient Email Addresses</label>
+            <input type="text" id="recipientsInput" placeholder="colleague@example.com, partner@example.com" required>
+            <small class="hint">Separate multiple email addresses with commas.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Privacy & Encryption Mode</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="privacyMode" value="STANDARD" checked>
+                <span><strong>Standard Mode:</strong> Server-side encryption at rest (S3/MinIO SSE), TLS in transit. Enables server integrity validation.</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="privacyMode" value="E2E">
+                <span><strong>End-to-End (E2E) Mode:</strong> Zero-knowledge client-side encryption (X25519 + AES-256-GCM). <em class="badge-tag">Feature-Flagged</em></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Upload Progress & Control Card -->
+          <div id="uploadProgressCard" class="progress-card hidden">
+            <div class="progress-header">
+              <span id="uploadPhaseLabel">Calculating SHA-256 integrity hash...</span>
+              <span id="uploadPercentLabel">0%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="uploadProgressBar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="progress-stats">
+              <span id="uploadSpeedLabel">0 MB/s</span>
+              <span id="uploadChunksLabel">Chunk 0 of 0</span>
+            </div>
+            <div class="upload-actions">
+              <button type="button" id="pauseUploadBtn" class="btn btn-secondary btn-sm">Pause</button>
+              <button type="button" id="resumeUploadBtn" class="btn btn-primary btn-sm hidden">Resume</button>
+              <button type="button" id="cancelUploadBtn" class="btn btn-danger btn-sm">Cancel</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="startTransferBtn" class="btn btn-primary">Start Resumable Upload</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- View 3: Recipient Inbox -->
+    <section id="inboxView" class="view-panel hidden">
+      <div class="panel-card">
+        <div class="card-header flex-between">
+          <div>
+            <h2>Incoming File Transfers</h2>
+            <p class="subtitle">Files waiting for you. Downloads authorized before expiry receive a 24-hour grace period.</p>
+          </div>
+          <button id="refreshInboxBtn" class="btn btn-secondary btn-sm">Refresh</button>
+        </div>
+
+        <div id="inboxList" class="transfer-list">
+          <p class="empty-state">Loading inbox...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 4: Sent Transfers History -->
+    <section id="historyView" class="view-panel hidden">
+      <div class="panel-card">
+        <div class="card-header flex-between">
+          <div>
+            <h2>Sent Transfers & Receipts</h2>
+            <p class="subtitle">Monitor active retention clocks, recipient access, and durable deletion receipts.</p>
+          </div>
+          <button id="refreshHistoryBtn" class="btn btn-secondary btn-sm">Refresh</button>
+        </div>
+
+        <div id="historyList" class="transfer-list">
+          <p class="empty-state">Loading transfers...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 5: Notifications -->
+    <section id="notificationsView" class="view-panel hidden">
+      <div class="panel-card">
+        <div class="card-header flex-between">
+          <div>
+            <h2>Notifications</h2>
+            <p class="subtitle">Real-time alerts for incoming files, verified downloads, and expiring transfers.</p>
+          </div>
+          <button id="markAllReadBtn" class="btn btn-secondary btn-sm">Mark All as Read</button>
+        </div>
+
+        <div id="notificationList" class="notification-list">
+          <p class="empty-state">No notifications.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 6: Settings, Quota & Devices -->
+    <section id="settingsView" class="view-panel hidden">
+      <div class="panel-card">
+        <div class="card-header">
+          <h2>Account Settings & Quota</h2>
+          <p class="subtitle">Manage storage quota, notification preferences, MFA, and trusted devices.</p>
+        </div>
+
+        <!-- Quota Usage Visualizer -->
+        <div class="settings-section">
+          <h3>Storage Quota (200 GB Standard Limit)</h3>
+          <div class="quota-container">
+            <div class="quota-bar-wrapper">
+              <div id="quotaStoredBar" class="quota-bar stored-bar" style="width: 0%" title="Stored Files"></div>
+              <div id="quotaReservedBar" class="quota-bar reserved-bar" style="width: 0%" title="Active Upload Reservations"></div>
+            </div>
+            <div class="quota-legend">
+              <div class="legend-item"><span class="color-dot stored-dot"></span> <span id="quotaStoredLabel">0 GB Stored</span></div>
+              <div class="legend-item"><span class="color-dot reserved-dot"></span> <span id="quotaReservedLabel">0 GB Reserved</span></div>
+              <div class="legend-item"><span class="color-dot remaining-dot"></span> <span id="quotaRemainingLabel">200 GB Available</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Preferences -->
+        <div class="settings-section">
+          <h3>Notification Channels & Privacy</h3>
+          <p class="hint">In accordance with FR-NOTIFY-04, mobile push notifications contain generic alert text only without sensitive metadata.</p>
+          <div class="prefs-grid" id="prefsContainer">
+            <label class="toggle-label"><input type="checkbox" id="prefEmail"> Email Notifications</label>
+            <label class="toggle-label"><input type="checkbox" id="prefPush"> Push Notifications (Generic Text)</label>
+            <label class="toggle-label"><input type="checkbox" id="prefInApp"> In-App Notifications</label>
+          </div>
+          <button type="button" id="savePrefsBtn" class="btn btn-secondary btn-sm">Save Notification Preferences</button>
+        </div>
+
+        <!-- Registered Devices for E2E -->
+        <div class="settings-section">
+          <h3>Trusted Client Devices</h3>
+          <p class="hint">Public keys registered for End-to-End Encryption key wrapping. The server stores only public keys.</p>
+          <div id="devicesList" class="device-list">
+            <p class="empty-state">Loading registered devices...</p>
+          </div>
+        </div>
+
+        <!-- User Profile & Security Info -->
+        <div class="settings-section">
+          <h3>Security & Account</h3>
+          <div id="userProfileInfo" class="profile-meta">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>HoneyShare &bull; Zero-Cost Local Architecture &bull; <a href="/actuator/health" target="_blank">System Health</a></p>
+  </footer>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
+
