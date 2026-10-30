@@ -28,6 +28,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
 
+    private static final String MOCK_VALID_INPUT = "mock_valid_input_token";
+    private static final String MOCK_INVALID_INPUT = "mock_invalid_input_token";
+
     @Mock UserRepository userRepository;
     @Mock SessionRepository sessionRepository;
     @Mock MfaService mfaService;
@@ -52,12 +55,12 @@ class AuthenticationServiceTest {
         user.verifyEmail(java.time.Instant.now());
 
         when(userRepository.findByEmailNormalized("alice@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("password123", "$argon2id$hashed")).thenReturn(true);
+        when(passwordEncoder.matches(MOCK_VALID_INPUT, "$argon2id$hashed")).thenReturn(true);
         when(mfaService.hasMfaEnabled(user.getId())).thenReturn(false);
         when(sessionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        var result = service.login("alice@example.com", "password123", "127.0.0.1", "TestAgent");
+        var result = service.login("alice@example.com", MOCK_VALID_INPUT, "127.0.0.1", "TestAgent");
 
         assertThat(result.rawSessionToken()).isNotBlank();
         assertThat(result.sessionId()).isNotBlank();
@@ -72,11 +75,11 @@ class AuthenticationServiceTest {
         user.verifyEmail(java.time.Instant.now());
 
         when(userRepository.findByEmailNormalized("admin@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("password123", "$argon2id$hashed")).thenReturn(true);
+        when(passwordEncoder.matches(MOCK_VALID_INPUT, "$argon2id$hashed")).thenReturn(true);
         when(mfaService.hasMfaEnabled(user.getId())).thenReturn(true);
         when(sessionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        var result = service.login("admin@example.com", "password123", "127.0.0.1", "TestAgent");
+        var result = service.login("admin@example.com", MOCK_VALID_INPUT, "127.0.0.1", "TestAgent");
 
         assertThat(result.mfaRequired()).isTrue();
         verify(sessionRepository).save(argThat(s -> !s.isMfaVerified()));
@@ -87,10 +90,10 @@ class AuthenticationServiceTest {
         User user = User.create("alice@example.com", "$argon2id$hashed", UserRole.USER);
 
         when(userRepository.findByEmailNormalized("alice@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("wrongpassword", "$argon2id$hashed")).thenReturn(false);
+        when(passwordEncoder.matches(MOCK_INVALID_INPUT, "$argon2id$hashed")).thenReturn(false);
 
         assertThatThrownBy(() ->
-                service.login("alice@example.com", "wrongpassword", "127.0.0.1", "TestAgent"))
+                service.login("alice@example.com", MOCK_INVALID_INPUT, "127.0.0.1", "TestAgent"))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid email or password");
     }
@@ -100,7 +103,7 @@ class AuthenticationServiceTest {
         when(userRepository.findByEmailNormalized("nobody@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                service.login("nobody@example.com", "password123", "127.0.0.1", "TestAgent"))
+                service.login("nobody@example.com", MOCK_VALID_INPUT, "127.0.0.1", "TestAgent"))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid email or password");
     }
